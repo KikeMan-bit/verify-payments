@@ -1,0 +1,69 @@
+from sqlalchemy import create_engine, Column, String, Float, DateTime, Enum, Text
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+from datetime import datetime
+import enum
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://usuario:password@localhost:5432/tigo_payments")
+
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+
+class PaymentStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    CONFIRMED = "CONFIRMED"
+    EXPIRED = "EXPIRED"
+    FAILED = "FAILED"
+
+
+class Payment(Base):
+    __tablename__ = "payments"
+
+    code = Column(String(20), primary_key=True, index=True)       # Ej: PAY-4521
+    business_id = Column(String(100), nullable=False, index=True)  # ID del negocio cliente
+    amount = Column(Float, nullable=False)                         # Monto esperado en Bs
+    currency = Column(String(10), default="BOB")
+    description = Column(String(255), nullable=True)
+    status = Column(Enum(PaymentStatus), default=PaymentStatus.PENDING)
+
+    # Datos del pagador (se llenan al confirmar)
+    payer_name = Column(String(200), nullable=True)
+    payer_phone = Column(String(20), nullable=True)
+    paid_amount = Column(Float, nullable=True)
+    transaction_id = Column(String(100), nullable=True)
+    detection_source = Column(String(10), nullable=True)           # "email" o "sms"
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    confirmed_at = Column(DateTime, nullable=True)
+    expires_at = Column(DateTime, nullable=False)
+
+    # Webhook del negocio (para notificar cuando se confirme)
+    webhook_url = Column(String(500), nullable=True)
+
+
+class ProcessedNotification(Base):
+    __tablename__ = "processed_notifications"
+
+    notification_id = Column(String(200), primary_key=True)       # ID del email/SMS
+    source = Column(String(10))                                    # "email" o "sms"
+    raw_content = Column(Text, nullable=True)
+    payment_code = Column(String(20), nullable=True)
+    processed_at = Column(DateTime, default=datetime.utcnow)
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+def create_tables():
+    Base.metadata.create_all(bind=engine)
