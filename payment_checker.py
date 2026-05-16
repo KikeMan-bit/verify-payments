@@ -8,27 +8,28 @@ from database import Payment, PaymentStatus, ProcessedNotification
 AMOUNT_TOLERANCE = 0.01  # Tolerancia de 1 centavo por redondeo
 
 
-def match_payment(db: Session, parsed: dict, source: str) -> Payment | None:
+def match_payment(db: Session, parsed: dict, source: str, business_id: str = None) -> Payment | None:
     """
     Intenta hacer match entre un pago detectado (email/SMS) y una orden pendiente.
     Estrategia:
     1. Si el parsed tiene payment_code → busca directo
     2. Si no → busca por monto + estado PENDING
+    Si se pasa business_id, solo busca dentro de esa empresa.
     """
     payment = None
 
+    base_query = db.query(Payment).filter(Payment.status == PaymentStatus.PENDING)
+    if business_id:
+        base_query = base_query.filter(Payment.business_id == business_id)
+
     # Estrategia 1: Buscar por código en el concepto
     if "payment_code" in parsed:
-        payment = db.query(Payment).filter(
-            Payment.code == parsed["payment_code"],
-            Payment.status == PaymentStatus.PENDING
-        ).first()
+        payment = base_query.filter(Payment.code == parsed["payment_code"]).first()
 
     # Estrategia 2: Buscar por monto exacto (menos confiable)
     if not payment and "amount" in parsed:
         amount = parsed["amount"]
-        payment = db.query(Payment).filter(
-            Payment.status == PaymentStatus.PENDING,
+        payment = base_query.filter(
             Payment.amount >= amount - AMOUNT_TOLERANCE,
             Payment.amount <= amount + AMOUNT_TOLERANCE,
         ).order_by(Payment.created_at.asc()).first()

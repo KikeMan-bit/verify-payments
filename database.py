@@ -1,7 +1,8 @@
-from sqlalchemy import create_engine, Column, String, Float, DateTime, Enum, Text
+from sqlalchemy import create_engine, Column, String, Float, DateTime, Enum, Text, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
+from uuid import uuid4
 import enum
 import os
 from dotenv import load_dotenv
@@ -13,6 +14,23 @@ DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://usuario:password@localhos
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
+
+
+class Business(Base):
+    __tablename__ = "businesses"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    name = Column(String(100), nullable=False)
+    email = Column(String(200), unique=True, nullable=False, index=True)
+    hashed_password = Column(String(255), nullable=False)
+    api_key = Column(String(64), unique=True, nullable=False, index=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Gmail de verificación (donde llegan los correos del banco)
+    gmail_address = Column(String(200), nullable=True)
+    gmail_credentials_json = Column(Text, nullable=True)  # contenido de credentials.json
+    gmail_token_json = Column(Text, nullable=True)         # contenido de token.json
 
 
 class PaymentStatus(str, enum.Enum):
@@ -67,3 +85,7 @@ def get_db():
 
 def create_tables():
     Base.metadata.create_all(bind=engine)
+
+
+# Exportar Business para usarlo en otros módulos
+__all__ = ["Business", "Payment", "ProcessedNotification", "PaymentStatus", "get_db", "create_tables"]
