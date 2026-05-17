@@ -1,14 +1,14 @@
 import re
 
 
-def parse_tigo_sms(body: str) -> dict | None:
+def parse_sms(body: str) -> dict | None:
     """
-    Extrae los datos del SMS de confirmación de Tigo Money.
+    Extrae los datos del SMS de confirmación de pago.
 
-    Ejemplo de SMS típico de Tigo Money Bolivia:
+    Ejemplo de SMS típico:
     "Recibiste Bs. 150.00 de JUAN PEREZ 73456789. Ref: TG-987654. Saldo: Bs. 500.00"
 
-    ⚠️ Ajusta los patrones según el SMS real que recibas de Tigo.
+    ⚠️ Ajusta los patrones según el SMS real que recibas.
     """
     patterns = {
         "amount": [

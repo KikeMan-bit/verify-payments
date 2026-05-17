@@ -154,7 +154,7 @@ def parse_mercantil_email(body: str) -> dict | None:
     return result
 
 
-def fetch_new_tigo_emails(
+def fetch_new_emails(
     last_check_timestamp: int = None,
     credentials_json: str = None,
     token_json: str = None,
